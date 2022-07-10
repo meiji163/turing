@@ -1,4 +1,19 @@
-(ns turing)
+(ns turing.core
+  (:require [turing.parser :as parser]))
+
+(defn make-tm [config]
+  (let [{empty :empty
+         start-pos :start-pos
+         start-state :start-state
+         halt :halt
+         input :input} 
+        config
+        _ (println config)]
+    (list 
+     (list start-state start-pos)
+     (if (nil? input) 
+       (new-tape (+ 1 start-pos) empty)
+       input))))
 
 (defn new-tape [n val] (vec (for [x (range n)] val)))
 
@@ -25,20 +40,19 @@
              (update-tape tape)))))
 
 
-(defn step-n [n mstate tape smap]
+(defn step-n [n tm-state tape tmap]
   (if (= n 0)
-      (list mstate tape)
-      (let [[new-state new-tape] (state-update mstate tape smap)]
-        (recur (- n 1) new-state new-tape smap))))
+      (list tm-state tape)
+      (let [[new-state new-tape] (state-update tm-state tape tmap)]
+        (recur (- n 1) new-state new-tape tmap))))
 
 
-(defn print-machine [mstate tape]
+(defn print-machine [tm-state tape]
   (do
     (println tape)
-    (let [[state idx] mstate
-          nspace (reduce + (map (comp count str) tape))]
+    (let [[state idx] tm-state
+          nspace (* 2 (reduce + (map (comp count str) tape)))]
       (println (format (str "%" nspace "s") state)))))
-
 
 ;; transition map maps machine state to (<direction> <write-symbol> <next-state>)
 (def BB3 {'(A 0) '(R 1 B)
@@ -70,7 +84,7 @@
 
 (defn -main
   [& args]
-  (let [tape (new-tape 20 0)
-        init '(A 15)
-        [state tape] (step-n 1 init tape BB5)]
-    (print-machine state tape)))
+  (with-open [rdr (clojure.java.io/reader (first args))]
+    (let [[config tmap] (parser/parse-tm rdr)
+          [state tape] (make-tm config)]
+     (print-machine state tape))))
